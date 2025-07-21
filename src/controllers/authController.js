@@ -2,30 +2,39 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const db = require("../../db");
+const { asyncHandler } = require("../middleware/errorHandler");
+const {
+  ValidationError,
+  UnauthorizedError,
+  ConflictError,
+} = require("../utils/errors");
 
 //register a user
-const registerUser = async (req, res) => {
+const registerUser = asyncHandler(async (req, res) => {
   const client = await db.connect();
   const { username, password } = req.body;
   try {
     await client.query("BEGIN");
     if (![username, password].every(Boolean)) {
-      return res.status(401).json({ error: "missing fields" });
+      // return res.status(401).json({ error: "missing fields" });
+      throw new ValidationError("Username and password are required");
     }
 
     if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 8 characters",
-      });
+      // return res.status(400).json({
+      //   success: false,
+      //   message: "Password must be at least 8 characters",
+      // });
+      throw new ValidationError("Password must be at least 8 characters");
     }
 
     const existingUser = await User.findByUsername(username);
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "Username already exists, Try another",
-      });
+      // return res.status(409).json({
+      //   success: false,
+      //   message: "Username already exists, Try another",
+      // });
+      throw new ConflictError("Username already exists, try another");
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -56,7 +65,7 @@ const registerUser = async (req, res) => {
       })
       .json({
         success: true,
-        message: "Account created with ₦5000 welcome bonus!",
+        message: "Account created!",
         user: {
           id: newUser.id,
           username: newUser.username,
@@ -72,65 +81,71 @@ const registerUser = async (req, res) => {
   } finally {
     client.release();
   }
-};
+});
 
 ////login user
-const loginUser = async (req, res) => {
+const loginUser = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-  try {
-    const existingUser = await User.findByUsername(username);
-    if (!existingUser) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    const checkPasswordMatch = await User.comparePassword(
-      password,
-      existingUser.password
-    );
-    if (!checkPasswordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    const token = jwt.sign(
-      { userId: existingUser.id, username: existingUser.username },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: false,
-        samesite: "strict",
-        maxAge: 24 * 60 * 60 * 1000,
-      })
-      //  secure: process.env.NODE_ENV === 'production', // Should be true in prod
-      .json({
-        success: true,
-        message: "Logged in successfully",
-        token,
-        user: {
-          id: existingUser.id,
-          username: existingUser.username,
-        },
-      });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      success: false,
-      message: "Login failed",
-    });
+  // try {
+  if (!username || !password) {
+    throw new ValidationError("Username and password are required");
   }
-};
+
+  const existingUser = await User.findByUsername(username);
+  if (!existingUser) {
+    // return res.status(401).json({
+    //   success: false,
+    //   message: "Invalid credentials",
+    // });
+    throw new UnauthorizedError("Invalid credentials");
+  }
+
+  const checkPasswordMatch = await User.comparePassword(
+    password,
+    existingUser.password
+  );
+  if (!checkPasswordMatch) {
+    // return res.status(401).json({
+    //   success: false,
+    //   message: "Invalid credentials",
+    // });
+    throw new UnauthorizedError("Invalid credentials");
+  }
+
+  const token = jwt.sign(
+    { userId: existingUser.id, username: existingUser.username },
+    process.env.JWT_SECRET,
+    { expiresIn: "1d" }
+  );
+
+  res
+    .cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      samesite: "strict",
+      maxAge: 24 * 60 * 60 * 1000,
+    })
+    //  secure: process.env.NODE_ENV === 'production', // Should be true in prod
+    .json({
+      success: true,
+      message: "Logged in successfully",
+      token,
+      user: {
+        id: existingUser.id,
+        username: existingUser.username,
+      },
+    });
+  // } catch (error) {
+  // console.log(error);
+  // res.status(500).json({
+  //   success: false,
+  //   message: "Login failed",
+  // });
+  // }
+});
 
 /////logout
-const logout = (req, res) => {
+const logout = asyncHandler(async (req, res) => {
   try {
     return res
       .clearCookie("token", {
@@ -150,7 +165,7 @@ const logout = (req, res) => {
       message: "Internal server error",
     });
   }
-};
+});
 
 module.exports = {
   registerUser,
