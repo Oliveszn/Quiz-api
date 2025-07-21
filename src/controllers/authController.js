@@ -86,17 +86,13 @@ const registerUser = asyncHandler(async (req, res) => {
 ////login user
 const loginUser = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-  // try {
+
   if (!username || !password) {
     throw new ValidationError("Username and password are required");
   }
 
   const existingUser = await User.findByUsername(username);
   if (!existingUser) {
-    // return res.status(401).json({
-    //   success: false,
-    //   message: "Invalid credentials",
-    // });
     throw new UnauthorizedError("Invalid credentials");
   }
 
@@ -105,10 +101,6 @@ const loginUser = asyncHandler(async (req, res) => {
     existingUser.password
   );
   if (!checkPasswordMatch) {
-    // return res.status(401).json({
-    //   success: false,
-    //   message: "Invalid credentials",
-    // });
     throw new UnauthorizedError("Invalid credentials");
   }
 
@@ -135,13 +127,6 @@ const loginUser = asyncHandler(async (req, res) => {
         username: existingUser.username,
       },
     });
-  // } catch (error) {
-  // console.log(error);
-  // res.status(500).json({
-  //   success: false,
-  //   message: "Login failed",
-  // });
-  // }
 });
 
 /////logout

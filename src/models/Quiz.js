@@ -39,7 +39,7 @@ const Quiz = {
   async validateAnswer(questionId, userAnswer) {
     const { rows } = await db.query(
       `
-      SELECT correct_option 
+      SELECT correct_option, explanation
       FROM questions 
       WHERE id = $1
     `,
@@ -47,7 +47,14 @@ const Quiz = {
     );
 
     if (rows.length === 0) throw new Error("Question not found");
-    return rows[0].correct_option === userAnswer.toUpperCase();
+
+    const question = rows[0];
+    const isCorrect = question.correct_option === userAnswer.toUpperCase();
+    return {
+      isCorrect,
+      correctAnswer: question.correct_option,
+      explanation: question.explanation || "No explanation available",
+    };
   },
 };
 
