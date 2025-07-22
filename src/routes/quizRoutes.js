@@ -14,5 +14,3 @@ router.get("/topics/:topicId/questions", getQuestions);
 router.post("/question/:questionId", checkAnswer);
 
 module.exports = router;
-
-// http://localhost:5000/api/v1/topics/59de6a48-46a0-4b08-9d99-40fce512dac9/questions?difficulty=easy
