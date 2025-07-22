@@ -6,6 +6,11 @@ const pool = new Pool({
   database: process.env.DB_DATABASE,
   password: process.env.DB_PASSWORD, // Same as pgAdmin login
   port: process.env.DB_PORT,
+
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 module.exports = {
